@@ -2,6 +2,8 @@ package org.example.logic;
 
 import org.example.user.User;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.InputMismatchException;
@@ -42,16 +44,24 @@ public class Logic {
     public static Scanner scanner;
     static User user = new User();
 
-    private static void login() {
+    private static void login() throws NoSuchAlgorithmException {
         System.out.println("Login:");
         System.out.print("Enter your first name: ");
         String firstName = scanner.nextLine();
         System.out.print("Enter your password: ");
         String password = scanner.nextLine();
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        md.update(password.getBytes());
+        byte[] byteData = md.digest();
+        StringBuilder sb = new StringBuilder();
+        for (byte b : byteData) {
+            sb.append(Integer.toString((b & 0xff) + 0x100, 16).substring(1));
+        }
+        String hashedPassword = sb.toString();
         try {
             PreparedStatement stmt = conn.prepareStatement(SELECT_USER);
             stmt.setString(1, firstName);
-            stmt.setString(2, password);
+            stmt.setString(2, hashedPassword);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 System.out.println("Login successful!");
@@ -66,19 +76,28 @@ public class Logic {
         }
     }
 
-    private static void register() {
+    private static void register() throws NoSuchAlgorithmException {
         System.out.print("Write your first name: ");
         String firstName = scanner.nextLine();
         System.out.print("Write your last name: ");
         String lastName = scanner.nextLine();
         String password = null;
         String confirmPassword = null;
+        String hashedPassword = null;
         while (true) {
             System.out.print("Password: ");
             password = scanner.nextLine();
             System.out.print("Confirm password: ");
             confirmPassword = scanner.nextLine();
             if (password.equals(confirmPassword)) {
+                MessageDigest md = MessageDigest.getInstance("SHA-256");
+                md.update(password.getBytes());
+                byte[] byteData = md.digest();
+                StringBuilder sb = new StringBuilder();
+                for (byte b : byteData) {
+                    sb.append(Integer.toString((b & 0xff) + 0x100, 16).substring(1));
+                }
+                hashedPassword = sb.toString();
                 break;
             }
             System.out.println("Passwords don't match. Please try again.");
@@ -86,7 +105,7 @@ public class Logic {
         try (PreparedStatement stmt = conn.prepareStatement(INSERT_USER)) {
             stmt.setString(1, firstName);
             stmt.setString(2, lastName);
-            stmt.setString(3, password);
+            stmt.setString(3, hashedPassword);
             int rowsAffected = stmt.executeUpdate();
             if (rowsAffected > 0) {
                 System.out.println("Registration successful!");
@@ -234,7 +253,7 @@ public class Logic {
 
     }*/
 
-    public static void showMainMenu() {
+    public static void showMainMenu() throws NoSuchAlgorithmException {
         System.out.println("Welcome to the library!");
 
         boolean exit = false;
